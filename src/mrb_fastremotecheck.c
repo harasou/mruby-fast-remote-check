@@ -69,6 +69,7 @@ typedef struct {
   u_int32_t dst_ip;
   struct sockaddr *peer_ptr;
   struct timeval timeout;
+  int id;
 } mrb_icmp_data;
 
 static void mrb_fastremotecheck_data_free(mrb_state *mrb, void *p)
@@ -388,6 +389,7 @@ static mrb_value mrb_icmp_init(mrb_state *mrb, mrb_value self)
   data->peer_ptr = (struct sockaddr *)addr;
   data->timeout = timeout;
   data->dst_ip = addr->sin_addr.s_addr;
+  data->id = htons(getpid() & 0xFFFF);
 
   DATA_PTR(self) = data;
 
@@ -428,7 +430,7 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
       recv_iphdr = (struct iphdr *)buf;
       recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
 
-      if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
+      if (data->dst_ip == recv_iphdr->saddr && data->id == recv_icmphdr->un.echo.id && recv_icmphdr->type == ICMP_ECHOREPLY) {
         close(sock);
         return mrb_true_value();
       }
